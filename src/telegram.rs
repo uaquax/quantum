@@ -8,11 +8,11 @@ use std::io::{self, BufRead as _, Write as _};
 use std::pin::pin;
 use tokio::task;
 
-use crate::u66::{handle_update, start_u66};
+use crate::quantum::{handle_update, start_quantum};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-const SESSION_FILE: &str = "u66.session";
+const SESSION_FILE: &str = "quantum.session";
 
 fn prompt(message: &str) -> Result<String> {
     let stdout = io::stdout();
@@ -87,7 +87,7 @@ pub async fn async_main() -> Result<()> {
     }
 
     let client_handle = client.clone();
-    let u66client = client.clone();
+    let quantumclient = client.clone();
     let network_handle = task::spawn(async move { client.run_until_disconnected().await });
 
     if sign_out {
@@ -95,9 +95,9 @@ pub async fn async_main() -> Result<()> {
     }
 
     task::spawn(async move {
-        let cln = u66client.clone();
+        let cln = quantumclient.clone();
 
-        start_u66(cln).await;
+        start_quantum(cln).await;
     });
 
     loop {

@@ -4,11 +4,7 @@ use std::{
 };
 
 use crate::models::{
-    self,
-    config::Config,
-    dialog::Dialog,
-    message::{JsonData, Message},
-    wait_message::WaitMessage,
+    self, config::Config, dialog::Dialog, message::Message, wait_message::WaitMessage,
 };
 use grammers_client::{Client, Update};
 use lazy_static::lazy_static;
@@ -18,10 +14,7 @@ use tokio::sync::Mutex;
 type Res = std::result::Result<(), Box<dyn std::error::Error>>;
 const TIMEOUT: i32 = 90;
 lazy_static! {
-    static ref CONFIG: Config = Config {
-        target_id: 660309226,
-        target_username: "AnonRuBot".to_string()
-    };
+    static ref CONFIG: Config = Config::new();
 }
 lazy_static! {
     static ref WAIT_MESSAGE: Arc<Mutex<Option<WaitMessage>>> = Arc::new(Mutex::new(None));
@@ -34,7 +27,7 @@ lazy_static! {
 }
 
 fn get_messages() -> Vec<models::message::Message> {
-    let parsed_json: JsonData =
+    let parsed_json: Config =
         serde_json::from_str(fs::read_to_string("messages.json").unwrap().as_str()).unwrap();
     let messages: Vec<Message> = parsed_json.messages;
 
@@ -42,7 +35,7 @@ fn get_messages() -> Vec<models::message::Message> {
 }
 
 fn get_back_messages() -> Vec<models::wait_message::WaitMessage> {
-    let parsed_json: JsonData =
+    let parsed_json: Config =
         serde_json::from_str(fs::read_to_string("messages.json").unwrap().as_str()).unwrap();
     let back_messages: Vec<WaitMessage> = parsed_json.back_messages;
 
@@ -146,7 +139,7 @@ pub async fn handle_update(client: Client, update: Update) -> Res {
     Ok(())
 }
 
-pub async fn start_u66(client: Client) {
+pub async fn start_quantum(client: Client) {
     let wait_message_clone = WAIT_MESSAGE.clone();
     let mut messages = get_messages().into_iter();
 
@@ -197,6 +190,6 @@ pub async fn start_u66(client: Client) {
             }
         }
 
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        tokio::time::sleep(Duration::from_millis(100)).await;
     }
 }
