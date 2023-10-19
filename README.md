@@ -1,2 +1,2 @@
 # quantum
-Telegram automatization
+Telegram automation
