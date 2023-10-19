@@ -28,7 +28,7 @@ lazy_static! {
 
 fn get_messages() -> Vec<models::message::Message> {
     let parsed_json: Config =
-        serde_json::from_str(fs::read_to_string("messages.json").unwrap().as_str()).unwrap();
+        serde_json::from_str(fs::read_to_string("config.json").unwrap().as_str()).unwrap();
     let messages: Vec<Message> = parsed_json.messages;
 
     messages
@@ -36,7 +36,7 @@ fn get_messages() -> Vec<models::message::Message> {
 
 fn get_back_messages() -> Vec<models::wait_message::WaitMessage> {
     let parsed_json: Config =
-        serde_json::from_str(fs::read_to_string("messages.json").unwrap().as_str()).unwrap();
+        serde_json::from_str(fs::read_to_string("config.json").unwrap().as_str()).unwrap();
     let back_messages: Vec<WaitMessage> = parsed_json.back_messages;
 
     back_messages
