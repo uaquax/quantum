@@ -1,6 +1,7 @@
 mod models;
 mod quantum;
 mod telegram;
+mod words;
 
 use std::env;
 use telegram::async_main;

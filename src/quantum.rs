@@ -1,18 +1,21 @@
+use crate::{
+    models::{self, config::Config, dialog::Dialog, message::Message, wait_message::WaitMessage},
+    words::{NO, YES},
+};
+use grammers_client::{Client, Update};
+use lazy_static::lazy_static;
+use log::warn;
+use regex::Regex;
+use std::sync::Arc;
 use std::{
     fs,
     time::{Duration, SystemTime},
 };
-
-use crate::models::{
-    self, config::Config, dialog::Dialog, message::Message, wait_message::WaitMessage,
-};
-use grammers_client::{Client, Update};
-use lazy_static::lazy_static;
-use std::sync::Arc;
 use tokio::sync::Mutex;
 
 type Res = std::result::Result<(), Box<dyn std::error::Error>>;
-const TIMEOUT: i32 = 90;
+const TIMEOUT: i32 = 40;
+
 lazy_static! {
     static ref CONFIG: Config = Config::new();
 }
@@ -34,6 +37,14 @@ fn get_messages() -> Vec<models::message::Message> {
     messages
 }
 
+async fn contains_yes() -> Regex {
+    Regex::new(&format!("\\b(?:{})\\b", YES.lock().await.join("|"))).expect("Invalid regex pattern")
+}
+
+async fn contains_no() -> Regex {
+    Regex::new(&format!("\\b(?:{})\\b", NO.lock().await.join("|"))).expect("Invalid regex pattern")
+}
+
 fn get_back_messages() -> Vec<models::wait_message::WaitMessage> {
     let parsed_json: Config =
         serde_json::from_str(fs::read_to_string("config.json").unwrap().as_str()).unwrap();
@@ -45,24 +56,52 @@ fn get_back_messages() -> Vec<models::wait_message::WaitMessage> {
 pub async fn handle_update(client: Client, update: Update) -> Res {
     match update {
         Update::NewMessage(msg) if !msg.outgoing() && msg.chat().id() == CONFIG.target_id => {
-            // let mut dialog = DIALOG.lock().await;
-            // match dialog.as_mut() {
-            //     Some(dlg) => {
-            //         dlg.messages
-            //             .as_mut()
-            //             .expect("Failed to unwrap messages")
-            //             .push(msg.text().to_string());
-            //         println!("{:?}", dlg);
-            //     }
-            //     None => {
-            //         warn!("Empty dialog");
-            //     }
-            // }
-
             let back_messages = get_back_messages();
 
             for bmsg in back_messages {
-                if msg.text().contains(&bmsg.target) {
+                if bmsg.target.contains("@yes") {
+                    if contains_yes()
+                        .await
+                        .is_match(msg.text().to_lowercase().as_str())
+                    {
+                        client.send_message(msg.chat(), bmsg.reply).await.unwrap();
+                    }
+
+                    if let Some(wait_msg) = bmsg.wait_message {
+                        let mut wait_message_lock = WAIT_MESSAGE.lock().await;
+                        *wait_message_lock = Some(*wait_msg);
+
+                        let mut wt = WAIT_TIME.lock().await;
+                        *wt = SystemTime::now();
+                    } else {
+                        let mut wait_message_lock = WAIT_MESSAGE.lock().await;
+                        *wait_message_lock = None;
+
+                        let mut wt = WAIT_TIME.lock().await;
+                        *wt = SystemTime::now();
+                    }
+                } else if bmsg.target.contains("@no") {
+                    if contains_no()
+                        .await
+                        .is_match(msg.text().to_lowercase().as_str())
+                    {
+                        client.send_message(msg.chat(), bmsg.reply).await.unwrap();
+                    }
+
+                    if let Some(wait_msg) = bmsg.wait_message {
+                        let mut wait_message_lock = WAIT_MESSAGE.lock().await;
+                        *wait_message_lock = Some(*wait_msg);
+
+                        let mut wt = WAIT_TIME.lock().await;
+                        *wt = SystemTime::now();
+                    } else {
+                        let mut wait_message_lock = WAIT_MESSAGE.lock().await;
+                        *wait_message_lock = None;
+
+                        let mut wt = WAIT_TIME.lock().await;
+                        *wt = SystemTime::now();
+                    }
+                } else if msg.text().contains(&bmsg.target) {
                     if bmsg.reply.contains("@") {
                         {
                             let mut wait_message_lock = WAIT_MESSAGE.lock().await;
@@ -85,11 +124,60 @@ pub async fn handle_update(client: Client, update: Update) -> Res {
             };
 
             if let Some(wait_msg) = wait_message {
+                warn!("\n\t\t> {}\n\n{:#?}", msg.text(), wait_msg);
                 if wait_msg.target == "@str" {
                     if wait_msg.reply == "@end" {
                         let mut wait_message_lock = WAIT_MESSAGE.lock().await;
                         *wait_message_lock = Some(wait_msg.clone());
                     } else if wait_msg.reply.len() >= 1 {
+                        client
+                            .send_message(msg.chat(), wait_msg.reply)
+                            .await
+                            .unwrap();
+                    }
+
+                    if let Some(wait_msg) = wait_msg.wait_message {
+                        let mut wait_message_lock = WAIT_MESSAGE.lock().await;
+                        *wait_message_lock = Some(*wait_msg);
+
+                        let mut wt = WAIT_TIME.lock().await;
+                        *wt = SystemTime::now();
+                    } else {
+                        let mut wait_message_lock = WAIT_MESSAGE.lock().await;
+                        *wait_message_lock = None;
+
+                        let mut wt = WAIT_TIME.lock().await;
+                        *wt = SystemTime::now();
+                    }
+                } else if wait_msg.target.contains("@yes") {
+                    if contains_yes()
+                        .await
+                        .is_match(msg.text().to_lowercase().as_str())
+                    {
+                        client
+                            .send_message(msg.chat(), wait_msg.reply)
+                            .await
+                            .unwrap();
+                    }
+
+                    if let Some(wait_msg) = wait_msg.wait_message {
+                        let mut wait_message_lock = WAIT_MESSAGE.lock().await;
+                        *wait_message_lock = Some(*wait_msg);
+
+                        let mut wt = WAIT_TIME.lock().await;
+                        *wt = SystemTime::now();
+                    } else {
+                        let mut wait_message_lock = WAIT_MESSAGE.lock().await;
+                        *wait_message_lock = None;
+
+                        let mut wt = WAIT_TIME.lock().await;
+                        *wt = SystemTime::now();
+                    }
+                } else if wait_msg.target.contains("@no") {
+                    if contains_no()
+                        .await
+                        .is_match(msg.text().to_lowercase().as_str())
+                    {
                         client
                             .send_message(msg.chat(), wait_msg.reply)
                             .await
