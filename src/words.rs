@@ -41,6 +41,7 @@ lazy_static! {
         "точно так".to_string(),
     ]));
 
+
     pub static ref NO: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![
         /* --- UA --- */
         "ні".to_string(),
