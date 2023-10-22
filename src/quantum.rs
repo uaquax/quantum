@@ -73,7 +73,6 @@ async fn new_message(text: String) {
             .unwrap()
             .push(text.clone());
 
-        println!("{}", text);
         if text.contains('@') || text.contains('＠') {
             dlg.as_mut().unwrap().username = Some(text);
         } else {
@@ -87,6 +86,14 @@ async fn new_message(text: String) {
     }
 }
 
+async fn reset() {
+    let mut wait_message_lock = WAIT_MESSAGE.lock().await;
+    *wait_message_lock = None;
+
+    let mut wt = WAIT_TIME.lock().await;
+    *wt = SystemTime::now();
+}
+
 async fn store_dialog(client: &Client) {
     if let Some(channel) = get_channel(&client).await {
         let mut dlg = DIALOG.lock().await;
@@ -94,20 +101,24 @@ async fn store_dialog(client: &Client) {
         *dlg = None;
 
         if dialog.is_some() {
-            client
-                .send_message(
-                    &channel,
-                    format!(
-                        "DIALOG {}\n\nName: {:?}\nAge: {:?}\nUsername: {:?}\nMessages: {:#?}",
-                        DIALOGS_COUNT.lock().await,
-                        dialog.as_ref().unwrap().name,
-                        dialog.as_ref().unwrap().age,
-                        dialog.as_ref().unwrap().username,
-                        dialog.as_ref().unwrap().messages,
-                    ),
-                )
-                .await
-                .unwrap();
+            if dialog.as_ref().unwrap().username.is_some()
+                || dialog.as_ref().unwrap().name.is_some()
+            {
+                client
+                    .send_message(
+                        &channel,
+                        format!(
+                            "DIALOG {}\n\nName: {:?}\nAge: {:?}\nUsername: {:?}\nMessages: {:#?}",
+                            DIALOGS_COUNT.lock().await,
+                            dialog.as_ref().unwrap().name,
+                            dialog.as_ref().unwrap().age,
+                            dialog.as_ref().unwrap().username,
+                            dialog.as_ref().unwrap().messages,
+                        ),
+                    )
+                    .await
+                    .unwrap();
+            }
         }
     }
 }
@@ -115,6 +126,8 @@ async fn store_dialog(client: &Client) {
 pub async fn handle_update(client: Client, update: Update) -> Res {
     match update {
         Update::NewMessage(msg) if !msg.outgoing() && msg.chat().id() == CONFIG.target_id => {
+            new_message(msg.text().to_string()).await;
+
             for bmsg in &CONFIG.back_messages {
                 if bmsg.target.contains("@yes") {
                     if contains_yes()
@@ -134,11 +147,7 @@ pub async fn handle_update(client: Client, update: Update) -> Res {
                         let mut wt = WAIT_TIME.lock().await;
                         *wt = SystemTime::now();
                     } else {
-                        let mut wait_message_lock = WAIT_MESSAGE.lock().await;
-                        *wait_message_lock = None;
-
-                        let mut wt = WAIT_TIME.lock().await;
-                        *wt = SystemTime::now();
+                        reset().await;
                     }
                 } else if bmsg.target.contains("@no") {
                     if contains_no()
@@ -158,11 +167,7 @@ pub async fn handle_update(client: Client, update: Update) -> Res {
                         let mut wt = WAIT_TIME.lock().await;
                         *wt = SystemTime::now();
                     } else {
-                        let mut wait_message_lock = WAIT_MESSAGE.lock().await;
-                        *wait_message_lock = None;
-
-                        let mut wt = WAIT_TIME.lock().await;
-                        *wt = SystemTime::now();
+                        reset().await;
                     }
                 } else if msg.text().contains(&bmsg.target.to_lowercase()) {
                     if bmsg.reply.contains("@") {
@@ -254,11 +259,7 @@ pub async fn handle_update(client: Client, update: Update) -> Res {
                         let mut wt = WAIT_TIME.lock().await;
                         *wt = SystemTime::now();
                     } else {
-                        let mut wait_message_lock = WAIT_MESSAGE.lock().await;
-                        *wait_message_lock = None;
-
-                        let mut wt = WAIT_TIME.lock().await;
-                        *wt = SystemTime::now();
+                        reset().await;
                     }
                 } else if wait_msg.target.contains("@yes") {
                     if contains_yes()
@@ -278,11 +279,7 @@ pub async fn handle_update(client: Client, update: Update) -> Res {
                         let mut wt = WAIT_TIME.lock().await;
                         *wt = SystemTime::now();
                     } else {
-                        let mut wait_message_lock = WAIT_MESSAGE.lock().await;
-                        *wait_message_lock = None;
-
-                        let mut wt = WAIT_TIME.lock().await;
-                        *wt = SystemTime::now();
+                        reset().await;
                     }
                 } else if wait_msg.target.contains("@no") {
                     if contains_no()
@@ -302,11 +299,7 @@ pub async fn handle_update(client: Client, update: Update) -> Res {
                         let mut wt = WAIT_TIME.lock().await;
                         *wt = SystemTime::now();
                     } else {
-                        let mut wait_message_lock = WAIT_MESSAGE.lock().await;
-                        *wait_message_lock = None;
-
-                        let mut wt = WAIT_TIME.lock().await;
-                        *wt = SystemTime::now();
+                        reset().await;
                     }
                 } else if msg.text().contains(&wait_msg.target) {
                     if wait_msg.reply.len() >= 1 {
@@ -323,15 +316,10 @@ pub async fn handle_update(client: Client, update: Update) -> Res {
                         let mut wt = WAIT_TIME.lock().await;
                         *wt = SystemTime::now();
                     } else {
-                        let mut wait_message_lock = WAIT_MESSAGE.lock().await;
-                        *wait_message_lock = None;
-
-                        let mut wt = WAIT_TIME.lock().await;
-                        *wt = SystemTime::now();
+                        reset().await;
                     }
                 }
             }
-            new_message(msg.text().to_string()).await;
         }
         _ => {}
     }
@@ -351,12 +339,7 @@ pub async fn start_quantum(client: Client) {
                 let msg = match messages.next() {
                     Some(msg) => msg,
                     None => {
-                        let dialog = DIALOG.lock().await;
-                        if dialog.is_some() {
-                            if dialog.as_ref().unwrap().username.is_some() {
-                                store_dialog(&client).await;
-                            }
-                        }
+                        store_dialog(&client).await;
 
                         messages = CONFIG.messages.clone().into_iter();
                         let msg = messages.next().unwrap();
