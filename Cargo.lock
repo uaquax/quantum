@@ -732,6 +732,7 @@ dependencies = [
  "futures-util",
  "grammers-client",
  "grammers-session",
+ "grammers-tl-types",
  "lazy_static",
  "log",
  "regex",

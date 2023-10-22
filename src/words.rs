@@ -37,6 +37,7 @@ lazy_static! {
         "верно".to_string(),
         "правда".to_string(),
         "безусловно".to_string(),
+        "естеств".to_string(),
         "непременно".to_string(),
         "точно так".to_string(),
     ]));

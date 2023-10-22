@@ -6,10 +6,11 @@ use super::{message::Message, wait_message::WaitMessage};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
+    pub target_id: i64,
+    pub dialog_keyword: String,
+    pub dialogs_channel: i64,
     pub back_messages: Vec<WaitMessage>,
     pub messages: Vec<Message>,
-    pub target_id: i64,
-    pub target_username: String,
 }
 
 impl Config {
@@ -19,7 +20,8 @@ impl Config {
 
         Self {
             target_id: parsed_json.target_id,
-            target_username: parsed_json.target_username,
+            dialog_keyword: parsed_json.dialog_keyword,
+            dialogs_channel: parsed_json.dialogs_channel,
             messages: parsed_json.messages,
             back_messages: parsed_json.back_messages,
         }
