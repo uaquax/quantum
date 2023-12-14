@@ -28,7 +28,6 @@ Telegram automation
       }
     },
     {
-      "unlimited_time": true,
       "content": "So ok",
       "wait_message": {
         "reply": "Ohhh",
