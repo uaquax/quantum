@@ -6,9 +6,7 @@ Telegram automation
 
 ```json
 {
-  "target_id": 660309226,
-  "dialog_keyword": "найден",
-  "dialogs_channel": 2031362338,
+  "target_id": 111111111,,
   "back_messages": [
     {
       "reply": "Omg",
